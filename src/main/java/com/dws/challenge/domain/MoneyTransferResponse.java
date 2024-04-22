@@ -10,13 +10,9 @@ import java.time.ZonedDateTime;
 @Builder
 @Getter
 public class MoneyTransferResponse {
-    private String transactionId;
-    private String status;
     private String message;
 
-    public MoneyTransferResponse(String transactionId, String status, String message) {
-        this.transactionId = transactionId;
-        this.status = status;
+    public MoneyTransferResponse(String message) {
         this.message = message;
     }
 }

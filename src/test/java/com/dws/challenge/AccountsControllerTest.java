@@ -116,7 +116,7 @@ class AccountsControllerTest {
     this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
             .content("{\"accountTo" + "\":\"Id-123\",\"accountFrom\":\"Id-124\", \"transferAmount\": 1000}"))
             .andExpect(content()
-                    .string("{\"transactionId\":\"5\",\"status\":\"" + "SUCCESS" + "\",\"message\":\"Successfully transfer the fund!\"}"));
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
   }
 
   @Test
@@ -132,24 +132,41 @@ class AccountsControllerTest {
     this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
             .content("{\"accountTo" + "\":\"Id-123\",\"accountFrom\":\"Id-124\", \"transferAmount\": 100}"))
             .andExpect(content()
-                    .string("{\"transactionId\":\"1\",\"status\":\"" + "SUCCESS" + "\",\"message\":\"Successfully transfer the fund!\"}"));
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
     this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
             .content("{\"accountTo" + "\":\"Id-123\",\"accountFrom\":\"Id-125\", \"transferAmount\": 200}"))
             .andExpect(content()
-                    .string("{\"transactionId\":\"2\",\"status\":\"" + "SUCCESS" + "\",\"message\":\"Successfully transfer the fund!\"}"));
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
     this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
             .content("{\"accountTo" + "\":\"Id-123\",\"accountFrom\":\"Id-126\", \"transferAmount\": 200}"))
             .andExpect(content()
-                    .string("{\"transactionId\":\"3\",\"status\":\"" + "SUCCESS" + "\",\"message\":\"Successfully transfer the fund!\"}"));
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
     this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
             .content("{\"accountTo" + "\":\"Id-123\",\"accountFrom\":\"Id-126\", \"transferAmount\": 400}"))
             .andExpect(content()
-                    .string("{\"transactionId\":\"4\",\"status\":\"" + "SUCCESS" + "\",\"message\":\"Successfully transfer the fund!\"}"));
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
+
+    this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"accountTo" + "\":\"Id-125\",\"accountFrom\":\"Id-124\", \"transferAmount\": 20}"))
+            .andExpect(content()
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
+    this.mockMvc.perform(post("/v1/accounts/amount-transfer").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"accountTo" + "\":\"Id-126\",\"accountFrom\":\"Id-125\", \"transferAmount\": 40}"))
+            .andExpect(content()
+                    .string("{\"message\":\"Money Transfer Successfully!!!\"}"));
 
 
-    Account account = accountsService.getAccount("Id-123");
+   Account account = accountsService.getAccount("Id-123");
     assertThat(account.getAccountId()).isEqualTo("Id-123");
     assertThat(account.getBalance()).isEqualByComparingTo("1900");
+
+    Account account1 = accountsService.getAccount("Id-125");
+    assertThat(account1.getAccountId()).isEqualTo("Id-125");
+    assertThat(account1.getBalance()).isEqualByComparingTo("780");
+
+    Account account2 = accountsService.getAccount("Id-126");
+    assertThat(account2.getAccountId()).isEqualTo("Id-126");
+    assertThat(account2.getBalance()).isEqualByComparingTo("440");
   }
 
   @Test
