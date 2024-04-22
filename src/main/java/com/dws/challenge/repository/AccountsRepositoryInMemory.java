@@ -57,15 +57,15 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     // Money deducted from accpunt
     @Override
     public Boolean debit(final MoneyTransferRequest transfer) {
-        Account fromAccount = getAccount(transfer.getAccountFrom());
-        if (getAccount(fromAccount.getAccountId()) == null) {
-            throw new AccountIdNotFoundException("Invalid fromAccount :: " + fromAccount.getAccountId());
-        }
-        if ((fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) {
-            return false;
-        }
         try {
             lock.acquire();
+            Account fromAccount = getAccount(transfer.getAccountFrom());
+            if (getAccount(fromAccount.getAccountId()) == null) {
+                throw new AccountIdNotFoundException("Invalid fromAccount :: " + fromAccount.getAccountId());
+            }
+            if ((fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) {
+                return false;
+            }
             if (fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
                 BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
                 this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
@@ -82,12 +82,12 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     // Money credited to accpunt
     @Override
     public Boolean credit(final MoneyTransferRequest transfer) {
-        Account toAccount = getAccount(transfer.getAccountTo());
-        if (toAccount == null) {
-            return false;
-        }
         try {
             lock.acquire();
+            Account toAccount = getAccount(transfer.getAccountTo());
+            if (toAccount == null) {
+                return false;
+            }
             BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
             this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
         } catch (Exception ex) {
