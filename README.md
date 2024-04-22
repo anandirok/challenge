@@ -15,5 +15,8 @@ Following points covers in amount transfer project:
 7.	I have used the synchronized in debit, credit and block level in transfer method.
 8.	I have also written the Junit test cases to cover all positive and negative cases.
 9.	I have add all validation check in validation level.
+10. I have covered all test cases.
+11. Concorrent trsaction also thread safe that is also i have covered in junit test case
+
 
 
