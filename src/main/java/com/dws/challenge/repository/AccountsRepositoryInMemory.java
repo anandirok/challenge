@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Repository
@@ -23,9 +26,10 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
 
     private final Map<String, Account> accounts = new ConcurrentHashMap<>();
 
-    private Semaphore lock = new Semaphore(5);
+    private Lock lock = new ReentrantLock();
 
     private final String SUCCESS = "Money Transfer Successfully!!!";
+    private final String FAILED = "Money Transfer failed";
 
     @Getter
     private final NotificationService notificationService;
@@ -58,23 +62,17 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     @Override
     public Boolean debit(final MoneyTransferRequest transfer) {
         try {
-            lock.acquire();
             Account fromAccount = getAccount(transfer.getAccountFrom());
             if (getAccount(fromAccount.getAccountId()) == null) {
                 throw new AccountIdNotFoundException("Invalid fromAccount :: " + fromAccount.getAccountId());
             }
-            if ((fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) {
-                return false;
-            }
-            if (fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
+            if ((!(fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) && fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
                 BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
                 this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
                 return true;
             }
         } catch (Exception ex) {
             ex.getMessage();
-        } finally {
-            lock.release();
         }
         return false;
     }
@@ -87,25 +85,43 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
             if (toAccount == null) {
                 return false;
             }
-            lock.acquire();
+
             BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
             this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
         } catch (Exception ex) {
             ex.getMessage();
-        } finally {
-            lock.release();
         }
         return true;
     }
 
     @Override
-    public MoneyTransferResponse fundTransfer(AccountsRepositoryInMemory mome, final MoneyTransferRequest moneyTransferRequest) throws InsufficientAmountInAccountException, ExecutionException, InterruptedException {
+    public MoneyTransferResponse fundTransfer(AccountsRepositoryInMemory target, final MoneyTransferRequest moneyTransferRequest) throws InsufficientAmountInAccountException, ExecutionException, InterruptedException {
         Account fromAccountDetails = getAccount(moneyTransferRequest.getAccountFrom());
         validateAccountDetails(moneyTransferRequest, fromAccountDetails);
-        boolean task1 = debit(moneyTransferRequest);
-        boolean task2 = mome.credit(moneyTransferRequest);
-        notificationToAccountHolder(task2, moneyTransferRequest);
-        return MoneyTransferResponse.builder().message(SUCCESS).build();
+        try {
+            if (lock.tryLock(50, TimeUnit.MILLISECONDS)) {
+                try {
+                    if (target.lock.tryLock(50, TimeUnit.MILLISECONDS)) {
+                        try {
+                            if (debit(moneyTransferRequest)) {
+                                boolean task2 = target.credit(moneyTransferRequest);
+                                notificationToAccountHolder(task2, moneyTransferRequest);
+                                return MoneyTransferResponse.builder().message(SUCCESS).build();
+                            }
+                            notificationToAccountHolder(false, moneyTransferRequest);
+                        } finally {
+                            target.lock.unlock();
+                        }
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+        } catch (InterruptedException ex){
+            ex.getMessage();
+            throw new InterruptedException("InterruptedException Exacption");
+        }
+        return MoneyTransferResponse.builder().message(FAILED).build();
     }
 
     private void validateAccountDetails(final MoneyTransferRequest moneyTransferRequest, Account fromAccountDetails) {
