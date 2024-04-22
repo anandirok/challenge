@@ -83,11 +83,11 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     @Override
     public Boolean credit(final MoneyTransferRequest transfer) {
         try {
-            lock.acquire();
             Account toAccount = getAccount(transfer.getAccountTo());
             if (toAccount == null) {
                 return false;
             }
+            lock.acquire();
             BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
             this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
         } catch (Exception ex) {
