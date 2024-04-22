@@ -12,13 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 @Repository
@@ -26,10 +23,9 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
 
     private final Map<String, Account> accounts = new ConcurrentHashMap<>();
 
+    private Semaphore lock = new Semaphore(5);
 
     private final String SUCCESS = "Money Transfer Successfully!!!";
-
-    int n = 1;
 
     @Getter
     private final NotificationService notificationService;
@@ -61,18 +57,24 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     // Money deducted from accpunt
     @Override
     public Boolean debit(final MoneyTransferRequest transfer) {
-        Account fromAccount = this.accounts.get(transfer.getAccountFrom());
+        Account fromAccount = getAccount(transfer.getAccountFrom());
         if (getAccount(fromAccount.getAccountId()) == null) {
             throw new AccountIdNotFoundException("Invalid fromAccount :: " + fromAccount.getAccountId());
         }
         if ((fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) {
-
             return false;
         }
-        if (fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
-            BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
-            this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
-            return true;
+        try {
+            if (fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
+                lock.acquire();
+                BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
+                this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
+                return true;
+            }
+        } catch (Exception ex) {
+            ex.getMessage();
+        } finally {
+            lock.release();
         }
         return false;
     }
@@ -80,23 +82,29 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
     // Money credited to accpunt
     @Override
     public Boolean credit(final MoneyTransferRequest transfer) {
-        Account toAccount = this.accounts.get(transfer.getAccountTo());
+        Account toAccount = getAccount(transfer.getAccountTo());
         if (toAccount == null) {
             return false;
         }
-        BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
-        this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
+        try {
+            lock.acquire();
+            BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
+            this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
+        } catch (Exception ex) {
+            ex.getMessage();
+        } finally {
+            lock.release();
+        }
         return true;
     }
 
     @Override
-    public MoneyTransferResponse fundTransfer(final MoneyTransferRequest moneyTransferRequest) throws InsufficientAmountInAccountException, ExecutionException, InterruptedException {
+    public MoneyTransferResponse fundTransfer(AccountsRepositoryInMemory mome, final MoneyTransferRequest moneyTransferRequest) throws InsufficientAmountInAccountException, ExecutionException, InterruptedException {
         Account fromAccountDetails = getAccount(moneyTransferRequest.getAccountFrom());
         validateAccountDetails(moneyTransferRequest, fromAccountDetails);
-        CompletableFuture.supplyAsync(() -> debit(moneyTransferRequest))
-                .thenApply((flag) -> flag ? credit(moneyTransferRequest) : false)
-                .thenAccept((i) -> notificationToAccountHolder(i, moneyTransferRequest));
-
+        boolean task1 = debit(moneyTransferRequest);
+        boolean task2 = mome.credit(moneyTransferRequest);
+        notificationToAccountHolder(task2, moneyTransferRequest);
         return MoneyTransferResponse.builder().message(SUCCESS).build();
     }
 

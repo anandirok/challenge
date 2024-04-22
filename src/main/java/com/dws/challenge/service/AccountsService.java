@@ -5,6 +5,7 @@ import com.dws.challenge.domain.MoneyTransferRequest;
 import com.dws.challenge.domain.MoneyTransferResponse;
 import com.dws.challenge.exception.BadRequestExceptionClass;
 import com.dws.challenge.repository.AccountsRepository;
+import com.dws.challenge.repository.AccountsRepositoryInMemory;
 import com.dws.challenge.repository.MoneyTransferRepository;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -23,15 +24,18 @@ public class AccountsService {
     @Getter
     private final MoneyTransferRepository moneyTransferRepository;
 
+    private final AccountsRepositoryInMemory accountsRepositoryInMemory;
+
     @Getter
     private final NotificationService notificationService;
     private final String SUCCESS = "SUCCESS";
 
 
     @Autowired
-    public AccountsService(AccountsRepository accountsRepository, MoneyTransferRepository moneyTransferRepository, NotificationService notificationService) {
+    public AccountsService(AccountsRepository accountsRepository, MoneyTransferRepository moneyTransferRepository, AccountsRepositoryInMemory accountsRepositoryInMemory, NotificationService notificationService) {
         this.accountsRepository = accountsRepository;
         this.moneyTransferRepository = moneyTransferRepository;
+        this.accountsRepositoryInMemory = accountsRepositoryInMemory;
         this.notificationService = notificationService;
     }
 
@@ -66,7 +70,7 @@ public class AccountsService {
 
 
         log.info("Start calling Money transfer method after validation");
-        MoneyTransferResponse moneyTransferResponse = this.moneyTransferRepository.fundTransfer(moneyTransferRequest);
+        MoneyTransferResponse moneyTransferResponse = this.moneyTransferRepository.fundTransfer(accountsRepositoryInMemory, moneyTransferRequest);
         return moneyTransferResponse;
     }
 }
