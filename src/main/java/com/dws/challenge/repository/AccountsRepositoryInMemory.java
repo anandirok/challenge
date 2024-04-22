@@ -65,8 +65,8 @@ public class AccountsRepositoryInMemory implements AccountsRepository, MoneyTran
             return false;
         }
         try {
+            lock.acquire();
             if (fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
-                lock.acquire();
                 BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
                 this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
                 return true;
