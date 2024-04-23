@@ -19,7 +19,6 @@ public class AccountsRepositoryInMemory implements AccountsRepository {
 
     private final Map<String, Account> accounts = new ConcurrentHashMap<>();
 
-    private final Lock lock = new ReentrantLock();
 
 
     @Override
@@ -32,6 +31,11 @@ public class AccountsRepositoryInMemory implements AccountsRepository {
     }
 
     @Override
+    public void updateAccountDetails(Account account)  {
+       accounts.put(account.getAccountId(), account);
+    }
+
+    @Override
     public Account getAccount(String accountId) {
         return accounts.get(accountId);
     }
@@ -39,43 +43,5 @@ public class AccountsRepositoryInMemory implements AccountsRepository {
     @Override
     public void clearAccounts() {
         accounts.clear();
-    }
-
-    // Money deducted from accpunt
-    @Override
-    public Boolean debit(final MoneyTransferRequest transfer) {
-        try {
-
-            Account fromAccount = getAccount(transfer.getAccountFrom());
-            if (getAccount(fromAccount.getAccountId()) == null) {
-                throw new AccountIdNotFoundException("Invalid fromAccount :: " + fromAccount.getAccountId());
-            }
-            lock.lock();
-            if ((!(fromAccount.getBalance().compareTo(BigDecimal.ZERO) == 0)) && fromAccount.getBalance().equals(transfer.getTransferAmount()) || fromAccount.getBalance().compareTo(transfer.getTransferAmount()) == 1) {
-                BigDecimal balanceAmount = fromAccount.getBalance().subtract(transfer.getTransferAmount());
-                this.accounts.put(fromAccount.getAccountId(), Account.builder().accountId(fromAccount.getAccountId()).balance(balanceAmount).build());
-                return true;
-            }
-        } finally {
-            lock.unlock();
-        }
-        return false;
-    }
-
-    // Money credited to accpunt
-    @Override
-    public Boolean credit(final MoneyTransferRequest transfer) {
-        try {
-            Account toAccount = getAccount(transfer.getAccountTo());
-            if (toAccount == null) {
-                return false;
-            }
-            lock.lock();
-            BigDecimal balanceAmount = toAccount.getBalance().add(transfer.getTransferAmount());
-            this.accounts.put(toAccount.getAccountId(), Account.builder().accountId(toAccount.getAccountId()).balance(balanceAmount).build());
-        } finally {
-            lock.unlock();
-        }
-        return true;
     }
 }

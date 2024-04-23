@@ -10,8 +10,7 @@ public interface AccountsRepository {
 
   Account getAccount(String accountId);
 
-  Boolean debit(final MoneyTransferRequest transfer);
-  Boolean credit(final MoneyTransferRequest transfer);
+  void updateAccountDetails(Account account);
 
   void clearAccounts();
 
